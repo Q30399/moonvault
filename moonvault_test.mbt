@@ -313,3 +313,75 @@ test "sha256_hello_direct" {
   let hex = bytes_to_hex(result)
   chk_eq(hex, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824", "sha256_hello_direct")
 }
+
+// AES-256-GCM Tests
+test "aes256_gcm_encrypt_decrypt" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let plaintext = str_to_utf8("Hello, MoonVault!")
+  let aad = str_to_utf8("authenticated data")
+  let (ct, tag) = aes256_gcm_encrypt(key, nonce, plaintext, aad)
+  let decrypted = aes256_gcm_decrypt(key, nonce, ct, aad, tag)
+  match decrypted {
+    Some(pt) => chk(constant_eq(pt, plaintext), "aes_gcm_encrypt_decrypt: roundtrip")
+    None => chk(false, "aes_gcm_encrypt_decrypt: decrypt failed")
+  }
+}
+
+test "aes256_gcm_tampered_tag" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let (ct, tag) = aes256_gcm_encrypt(key, nonce, str_to_utf8("test"), str_to_utf8(""))
+  let bad_tag = random_bytes(16)
+  let decrypted = aes256_gcm_decrypt(key, nonce, ct, str_to_utf8(""), bad_tag)
+  match decrypted {
+    Some(_) => chk(false, "aes_gcm_tampered_tag: should fail with bad tag")
+    None => chk(true, "aes_gcm_tampered_tag: correctly rejected")
+  }
+}
+
+test "aes256_gcm_tampered_ct" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let (ct, tag) = aes256_gcm_encrypt(key, nonce, str_to_utf8("test"), str_to_utf8(""))
+  let ct_arr = ct.to_fixedarray()
+  ct_arr[0] = ct_arr[0] ^ b'\x01'
+  let tampered_ct = Bytes::from_array(ct_arr)
+  let decrypted = aes256_gcm_decrypt(key, nonce, tampered_ct, str_to_utf8(""), tag)
+  match decrypted {
+    Some(_) => chk(false, "aes_gcm_tampered_ct: should fail with tampered ct")
+    None => chk(true, "aes_gcm_tampered_ct: correctly rejected")
+  }
+}
+
+test "aes256_gcm_empty_plaintext" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let (ct, tag) = aes256_gcm_encrypt(key, nonce, str_to_utf8(""), str_to_utf8(""))
+  chk(ct.length() == 0, "aes_gcm_empty: ciphertext should be empty")
+  let decrypted = aes256_gcm_decrypt(key, nonce, ct, str_to_utf8(""), tag)
+  match decrypted {
+    Some(pt) => chk(pt.length() == 0, "aes_gcm_empty: roundtrip empty")
+    None => chk(false, "aes_gcm_empty: decrypt failed")
+  }
+}
+
+test "aes256_gcm_large_input" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let data = str_to_utf8("a".repeat(1024))
+  let (ct, tag) = aes256_gcm_encrypt(key, nonce, data, str_to_utf8("large_aad"))
+  chk(ct.length() == 1024, "aes_gcm_large: ct len")
+  let decrypted = aes256_gcm_decrypt(key, nonce, ct, str_to_utf8("large_aad"), tag)
+  match decrypted {
+    Some(pt) => chk(constant_eq(pt, data), "aes_gcm_large: roundtrip")
+    None => chk(false, "aes_gcm_large: decrypt failed")
+  }
+}
+
+test "aes256_gcm_generate_key_nonce" {
+  let key = generate_aes_key_256()
+  let nonce = generate_nonce_96()
+  chk(key.length() == 32, "generate_aes_key_256: key length")
+  chk(nonce.length() == 12, "generate_nonce_96: nonce length")
+}
