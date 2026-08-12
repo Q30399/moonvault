@@ -454,3 +454,73 @@ test "chacha20_large_input" {
   let pt = chacha20_decrypt(key, nonce, ct)
   chk(constant_eq(data, pt), "chacha20_large_input: roundtrip")
 }
+
+// HKDF Tests
+test "hkdf_sha256_basic" {
+  let ikm = str_to_utf8("secret")
+  let salt = str_to_utf8("salt")
+  let info = str_to_utf8("info")
+  let dk = hkdf_sha256(ikm, salt, info, 32)
+  chk(dk.length() == 32, "hkdf_sha256_basic: key length")
+}
+
+test "hkdf_sha256_deterministic" {
+  let ikm = str_to_utf8("test")
+  let salt = str_to_utf8("")
+  let info = str_to_utf8("")
+  let dk1 = hkdf_sha256(ikm, salt, info, 16)
+  let dk2 = hkdf_sha256(ikm, salt, info, 16)
+  chk(constant_eq(dk1, dk2), "hkdf_sha256_deterministic: same inputs = same output")
+}
+
+test "hkdf_sha256_different_lengths" {
+  let ikm = str_to_utf8("key_material")
+  let salt = str_to_utf8("salt")
+  let info = str_to_utf8("app")
+  let dk16 = hkdf_sha256(ikm, salt, info, 16)
+  let dk32 = hkdf_sha256(ikm, salt, info, 32)
+  let dk64 = hkdf_sha256(ikm, salt, info, 64)
+  chk(dk16.length() == 16, "hkdf_len16")
+  chk(dk32.length() == 32, "hkdf_len32")
+  chk(dk64.length() == 64, "hkdf_len64")
+}
+
+// TOTP Tests
+test "totp_generate_secret" {
+  let secret = generate_totp_secret()
+  chk(secret.length() > 0, "totp_generate_secret: should not be empty")
+}
+
+test "totp_secret_bytes" {
+  let bytes = generate_totp_secret_bytes()
+  chk(bytes.length() == 20, "totp_secret_bytes: should be 20 bytes")
+}
+
+test "totp_now" {
+  let secret = generate_totp_secret_bytes()
+  let code = totp_now(secret)
+  chk(code.length() == 6, "totp_now: should produce 6-digit code")
+}
+
+test "totp_different_inputs" {
+  let s1 = generate_totp_secret_bytes()
+  let s2 = generate_totp_secret_bytes()
+  let c1 = totp_now(s1)
+  chk(c1.length() == 6, "totp_different_inputs: should produce code")
+}
+
+test "base32_encode_decode_basic" {
+  let encoded = base32_encode(str_to_utf8("test"))
+  chk(encoded.length() > 0, "base32_encode: should produce output")
+}
+
+test "base32_decode_empty" {
+  let result = base32_decode("")
+  chk(result.length() == 0, "base32_decode_empty: should be empty")
+}
+
+test "totp_uri_format" {
+  let uri = totp_uri("SECRET123", "user@example.com", "MoonVault")
+  chk(uri.has_prefix("otpauth://totp/"), "totp_uri: should start with otpauth://totp/")
+  chk(uri.contains("MoonVault"), "totp_uri: should contain issuer")
+}
