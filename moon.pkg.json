@@ -1,0 +1,10 @@
+{
+  "name": "Q30399/moonvault",
+  "version": "0.1.0",
+  "readme": "README.md",
+  "repository": "https://github.com/Q30399/moonvault",
+  "license": "Apache-2.0",
+  "keywords": ["crypto", "password", "hash", "sha256", "sha512", "bcrypt", "scrypt", "argon2", "aes", "chacha20", "totp", "hotp", "security"],
+  "description": "Pure MoonBit cryptographic library with SHA-256/512, HMAC, PBKDF2, bcrypt, scrypt, Argon2id, AES-256-GCM, ChaCha20-Poly1305, HKDF, TOTP/HOTP, and secure password utilities.",
+  "source": "."
+}
