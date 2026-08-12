@@ -385,3 +385,72 @@ test "aes256_gcm_generate_key_nonce" {
   chk(key.length() == 32, "generate_aes_key_256: key length")
   chk(nonce.length() == 12, "generate_nonce_96: nonce length")
 }
+
+// ChaCha20-Poly1305 Tests
+test "chacha20_encrypt_decrypt" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let plaintext = str_to_utf8("ChaCha20 test message")
+  let ct = chacha20_encrypt(key, nonce, plaintext)
+  let pt = chacha20_decrypt(key, nonce, ct)
+  chk(constant_eq(plaintext, pt), "chacha20_encrypt_decrypt: roundtrip")
+}
+
+test "chacha20_aead_roundtrip" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let plaintext = str_to_utf8("AEAD test")
+  let aad = str_to_utf8("additional data")
+  let (ct, tag) = chacha20_poly1305_encrypt(key, nonce, plaintext, aad)
+  let decrypted = chacha20_poly1305_decrypt(key, nonce, ct, aad, tag)
+  match decrypted {
+    Some(pt) => chk(constant_eq(plaintext, pt), "chacha20_aead_roundtrip")
+    None => chk(false, "chacha20_aead_roundtrip: decrypt failed")
+  }
+}
+
+test "chacha20_aead_wrong_tag" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let (ct, _) = chacha20_poly1305_encrypt(key, nonce, str_to_utf8("test"), str_to_utf8(""))
+  let bad_tag = random_bytes(16)
+  let decrypted = chacha20_poly1305_decrypt(key, nonce, ct, str_to_utf8(""), bad_tag)
+  match decrypted {
+    Some(_) => chk(false, "chacha20_aead_wrong_tag: should fail")
+    None => chk(true, "chacha20_aead_wrong_tag: correctly rejected")
+  }
+}
+
+test "chacha20_aead_empty" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let (ct, tag) = chacha20_poly1305_encrypt(key, nonce, str_to_utf8(""), str_to_utf8(""))
+  chk(ct.length() == 0, "chacha20_aead_empty: ct should be empty")
+  let decrypted = chacha20_poly1305_decrypt(key, nonce, ct, str_to_utf8(""), tag)
+  match decrypted {
+    Some(pt) => chk(pt.length() == 0, "chacha20_aead_empty: roundtrip")
+    None => chk(false, "chacha20_aead_empty: decrypt failed")
+  }
+}
+
+test "poly1305_mac_basic" {
+  let key = random_bytes(32)
+  let msg = str_to_utf8("poly1305 test")
+  let mac = poly1305_mac(key, msg)
+  chk(mac.length() == 16, "poly1305_mac_basic: mac length")
+}
+
+test "generate_chacha20_key" {
+  let key = generate_chacha20_key()
+  chk(key.length() == 32, "generate_chacha20_key: key length")
+}
+
+test "chacha20_large_input" {
+  let key = random_bytes(32)
+  let nonce = random_bytes(12)
+  let data = str_to_utf8("b".repeat(2048))
+  let ct = chacha20_encrypt(key, nonce, data)
+  chk(ct.length() == 2048, "chacha20_large_input: ct len")
+  let pt = chacha20_decrypt(key, nonce, ct)
+  chk(constant_eq(data, pt), "chacha20_large_input: roundtrip")
+}
