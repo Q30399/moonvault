@@ -46,6 +46,34 @@ test "sha256_long" {
   chk(result.length() == 64, "sha256_long: length should be 64")
 }
 
+// SHA-512 Tests
+test "sha512_empty" {
+  let result = sha512(str_to_utf8(""))
+  let hex = bytes_to_hex(result)
+  chk_eq(hex, "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e", "sha512_empty")
+}
+
+test "sha512_abc" {
+  let result = sha512(str_to_utf8("abc"))
+  let hex = bytes_to_hex(result)
+  chk_eq(hex, "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f", "sha512_abc")
+}
+
+test "sha512_quick_brown" {
+  let result = sha512_hex("The quick brown fox jumps over the lazy dog")
+  chk_eq(result, "07e547d9586f6a73f73fbac0435ed76951218fb7d0c8d788a309d785436bbb642e93a252a954f23912547d1e8a3b5ed6e1bfd7097821233fa0538f3db854fee6", "sha512_quick_brown")
+}
+
+test "sha384_basic" {
+  let result = sha384_hex("abc")
+  chk_eq(result, "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7", "sha384_basic")
+}
+
+test "sha512_256_basic" {
+  let result = sha512_256_hex("abc")
+  chk_eq(result, "53048e2681941ef99b2e29b76b4c7dabe4c2d0c634fc6d46e0e2f13107e7af23", "sha512_256_basic")
+}
+
 // HMAC Tests
 test "hmac_sha256_rfc4231_test1" {
   let key : Bytes = Bytes::make(20, b'\x0b')
